@@ -1,4 +1,17 @@
-const N = 100;
+const N = 30;
+
+async function fetchWithTimeout(resource, options = {}) {
+    const { timeout = 8000 } = options;
+    
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal  
+    });
+    clearTimeout(id);
+    return response;
+  }
 
 function makeid(length) {
     var result           = '';
@@ -23,7 +36,8 @@ function makepin() {
 function create_account(email) {
     let body = "{\"email\":\""+email+"@thedrinkmarket.fr\",\"password\":\""+makepin()+"\",\"name\":\""+makeid(5)+"\"}";
     console.log(body);
-    fetch("https://boursofoy.centralelilleprojets.fr/api/user/register/", {
+    fetchWithTimeout("https://boursofoy.centralelilleprojets.fr/api/user/register/", {
+        timeout: 6000,
         "headers": {
           "accept": "application/json",
           "accept-language": "de-DE,de;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5",
@@ -42,13 +56,15 @@ function create_account(email) {
         "body": body,
         "method": "POST"
       }).then((response) => {
-          if (response.status == 500) {
-              console.log("Error");
+          if (response.status >= 500) {
+              console.log("Error server: " + response.status);
+          } else if (response.status == 201) {
+            console.log("Account created successfully");
+          } else {
+            console.log("Error status: " + response.status);
           }
-          if (response.status == 201) {
-              console.log("Account created successfully");
-          }
-          //console.log(response)
+      }).catch((err) => {
+        console.log("Client timeout.")
       });
 }
 for (i = 0; i < N; i++){
